@@ -1,8 +1,6 @@
 import { create } from 'zustand';
 import { Receipt, AgentMessage, Friend, mockReceipt, healingMap } from './mockData';
-
-// TODO [BACKEND]: When FastAPI is ready, replace local state mutations with API calls
-// Expected endpoints: POST /ocr, POST /heal, POST /split
+import { scanReceiptAPI } from './api';
 
 interface AppState {
   currentReceipt: Receipt | null;
