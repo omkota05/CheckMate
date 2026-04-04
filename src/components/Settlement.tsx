@@ -127,7 +127,7 @@ export function Settlement() {
       <div className="rounded-lg border border-border bg-card p-4 shadow-card">
         <div className="flex justify-between text-sm font-bold text-foreground">
           <span>Grand Total</span>
-          <span>${totalWithTaxTip.toFixed(2)}</span>
+          <span>${grandTotal.toFixed(2)}</span>
         </div>
       </div>
     </div>
