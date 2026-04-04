@@ -1,5 +1,5 @@
 // TODO [BACKEND]: Update this URL to your deployed FastAPI server
-export const FASTAPI_BASE_URL = 'http://localhost:8000';
+export const FASTAPI_BASE_URL = 'https://kimberlee-unlucent-noneagerly.ngrok-free.dev';
 
 import { Receipt, ReceiptItem } from './mockData';
 
