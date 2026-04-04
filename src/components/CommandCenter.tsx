@@ -5,7 +5,7 @@ import { recentSplits } from '@/lib/mockData';
 import { useRef } from 'react';
 
 export function CommandCenter() {
-  const { startHealingSimulation, setActiveTab, setUploadedImage } = useAppStore();
+  const { startHealingSimulation, setActiveTab, setUploadedImage, scanReceipt } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleScan = () => {
@@ -15,16 +15,10 @@ export function CommandCenter() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // TODO [BACKEND]: Send image file to FastAPI POST /ocr, receive parsed items
-      // Expected endpoint: POST /ocr
-      // Expected payload: FormData with 'file' field
-      // Expected response: { items: ReceiptItem[], restaurant_name: string, tax: number, tip: number }
       setUploadedImage(file);
+      // Send to FastAPI backend; falls back to demo if backend is unavailable
+      scanReceipt(file);
     }
-    // For now, run local simulation
-    startHealingSimulation();
-    // Navigate to group setup so user can add people before assigning
-    setTimeout(() => setActiveTab('group'), 800);
   };
 
   return (
