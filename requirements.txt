@@ -1,0 +1,8 @@
+
+fastapi
+uvicorn
+browser-use
+langchain-google-genai
+google-generativeai
+python-multipart
+playwright
