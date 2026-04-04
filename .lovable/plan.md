@@ -1,20 +1,31 @@
 
 
-# Update FastAPI Base URL
+# Fix ngrok "Failed to fetch" — Add Required Header
 
-## Summary
-One-line change: update `FASTAPI_BASE_URL` in `src/lib/api.ts` from `http://localhost:8000` to the deployed ngrok URL.
+## Problem
+The fetch to `https://kimberlee-unlucent-noneagerly.ngrok-free.dev/scan` fails with "Failed to fetch" before even getting a response. This happens because **ngrok free tier serves an interstitial warning page** for requests that don't include a specific header. The browser's CORS preflight (OPTIONS request) hits this interstitial instead of the FastAPI CORS response, causing the entire request to be blocked.
 
-## Change
+## Fix
+Add the `ngrok-skip-browser-warning` header to the fetch call in `src/lib/api.ts`. This tells ngrok to pass the request straight through to your FastAPI server.
 
-**`src/lib/api.ts` (line 2)**
+### Change in `src/lib/api.ts`
+Update the fetch call (line 25-28) to include the ngrok header:
+
 ```ts
-// Before
-export const FASTAPI_BASE_URL = 'http://localhost:8000';
-
-// After
-export const FASTAPI_BASE_URL = 'https://kimberlee-unlucent-noneagerly.ngrok-free.dev';
+const res = await fetch(`${FASTAPI_BASE_URL}/scan`, {
+  method: 'POST',
+  headers: {
+    'ngrok-skip-browser-warning': 'true',
+  },
+  body: formData,
+});
 ```
 
-That's it. The `scanReceipt` store action and `CommandCenter` file upload handler are already wired to call `POST {FASTAPI_BASE_URL}/scan`. Once the URL points to the live server, uploading a receipt image will hit the real backend. If the backend is down, the existing `catch` block falls back to demo data automatically.
+That's it — one header addition. The backend CORS config already allows all origins/headers, so once ngrok stops intercepting, the request will go through to FastAPI normally.
+
+## Why this works
+- ngrok free tunnels show a "Visit Site" interstitial page to browser requests
+- This interstitial doesn't respond to CORS preflight correctly
+- The `ngrok-skip-browser-warning` header bypasses it entirely
+- Your FastAPI backend already has `allow_headers=["*"]` so it will accept this extra header
 
