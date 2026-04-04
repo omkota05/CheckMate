@@ -6,7 +6,7 @@ import { useAppStore } from '@/lib/store';
 // Expected payload: { receipt_id: string, assignments: { item_id: string, assigned_to: string[] }[] }
 
 export function ReceiptHealer() {
-  const { currentReceipt, assignItem, setActiveTab, friends } = useAppStore();
+  const { currentReceipt, assignItem, setActiveTab, friends, updateTaxTip } = useAppStore();
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   if (!currentReceipt) {
