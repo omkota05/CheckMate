@@ -17,6 +17,8 @@ interface AppState {
   addAgentMessage: (msg: Omit<AgentMessage, 'id' | 'timestamp'>) => void;
   startHealingSimulation: () => void;
   assignItem: (itemId: string, assignees: string[]) => void;
+  // TODO [BACKEND]: Tax/tip may come from FastAPI /ocr response, user can override here
+  updateTaxTip: (tax: number, tip: number) => void;
 
   // Friends management
   // TODO [BACKEND]: Pass friends list to FastAPI POST /split endpoint payload
