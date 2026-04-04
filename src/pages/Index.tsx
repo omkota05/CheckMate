@@ -1,16 +1,48 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { Shield } from 'lucide-react';
+import { BottomNav } from '@/components/BottomNav';
+import { CommandCenter } from '@/components/CommandCenter';
+import { ReceiptHealer } from '@/components/ReceiptHealer';
+import { Settlement } from '@/components/Settlement';
+import { useAppStore } from '@/lib/store';
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
-  return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
-    </div>
-  );
+const screens = {
+  home: CommandCenter,
+  receipt: ReceiptHealer,
+  settle: Settlement,
 };
 
-const Index = PlaceholderIndex;
+export default function Index() {
+  const { activeTab } = useAppStore();
+  const Screen = screens[activeTab];
 
-export default Index;
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
+        <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+              <Shield className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-sm font-extrabold tracking-tight text-foreground">Sentinel Split</h1>
+              <p className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground">
+                AI-Powered Splitting
+              </p>
+            </div>
+          </div>
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-bold text-muted-foreground">
+            U
+          </div>
+        </div>
+      </header>
+
+      {/* Content */}
+      <main className="mx-auto max-w-lg px-4 pb-24 pt-4">
+        <Screen />
+      </main>
+
+      <BottomNav />
+    </div>
+  );
+}
