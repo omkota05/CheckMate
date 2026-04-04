@@ -97,6 +97,35 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
     }),
 
+  scanReceipt: async (file) => {
+    const { addAgentMessage, startHealingSimulation, setActiveTab } = get();
+    addAgentMessage({ message: 'Scanning receipt with AI...', type: 'processing' });
+
+    try {
+      const receipt = await scanReceiptAPI(file);
+      set({ currentReceipt: receipt });
+      addAgentMessage({
+        message: `Parsed ${receipt.items.length} items from "${receipt.restaurant_name}"`,
+        type: 'healed',
+      });
+      receipt.items.forEach((item) => {
+        addAgentMessage({
+          message: `${item.original_ocr_name} — $${item.price.toFixed(2)} (confidence: ${item.confidence_score.toFixed(2)})${item.status === 'low_confidence' ? ' ⚠️ needs healing' : ' ✓'}`,
+          type: item.status === 'low_confidence' ? 'searching' : 'healed',
+        });
+      });
+      setActiveTab('group');
+    } catch (err) {
+      console.error('Backend scan failed, falling back to demo:', err);
+      addAgentMessage({
+        message: `Backend unavailable — using demo data. (${err instanceof Error ? err.message : 'Unknown error'})`,
+        type: 'idle',
+      });
+      startHealingSimulation();
+      setTimeout(() => setActiveTab('group'), 800);
+    }
+  },
+
   startHealingSimulation: () => {
     // TODO [BACKEND]: Replace this entire simulation with:
     // 1. POST image to FastAPI /ocr → receive parsed items
