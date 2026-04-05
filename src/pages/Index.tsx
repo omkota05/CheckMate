@@ -1,4 +1,4 @@
-import { Shield } from 'lucide-react';
+import { BadgeCheck } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { CommandCenter } from '@/components/CommandCenter';
 import { GroupSetup } from '@/components/GroupSetup';
@@ -23,10 +23,10 @@ export default function Index() {
         <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Shield className="h-4 w-4 text-primary-foreground" />
+              <BadgeCheck className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-sm font-extrabold tracking-tight text-foreground">Sentinel Split</h1>
+              <h1 className="text-sm font-extrabold tracking-tight text-foreground">CheckMate</h1>
               <p className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground">
                 AI-Powered Splitting
               </p>

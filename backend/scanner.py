@@ -4,7 +4,7 @@ import logging
 from google import genai
 from healer import get_confidence, should_heal
 
-logger = logging.getLogger("sentinel")
+logger = logging.getLogger("checkmate")
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 

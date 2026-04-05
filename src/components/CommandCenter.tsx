@@ -4,7 +4,7 @@ import { useAppStore } from '@/lib/store';
 import { recentSplits } from '@/lib/mockData';
 import { useState } from 'react';
 
-const RECEIPT_INPUT_ID = 'sentinel-receipt-file';
+const RECEIPT_INPUT_ID = 'checkmate-receipt-file';
 
 export function CommandCenter() {
   const { startHealingSimulation, setActiveTab, setUploadedImage, scanReceipt } = useAppStore();
