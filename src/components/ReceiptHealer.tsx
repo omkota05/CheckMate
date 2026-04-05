@@ -195,10 +195,16 @@ export function ReceiptHealer() {
             />
           </div>
         </div>
+        <div className="mt-1 flex justify-between text-sm">
+          <span className="text-muted-foreground">Subtotal ({currentReceipt.items.length} items)</span>
+          <span className="text-foreground font-semibold">
+            ${currentReceipt.items.reduce((s, i) => s + i.price, 0).toFixed(2)}
+          </span>
+        </div>
         <div className="mt-2 flex justify-between border-t border-border pt-2 text-sm">
           <span className="font-bold text-foreground">Total</span>
           <span className="font-bold text-foreground">
-            ${(currentReceipt.items.reduce((s, i) => s + i.price, 0) + currentReceipt.tax + currentReceipt.tip).toFixed(2)}
+            ${currentReceipt.total.toFixed(2)}
           </span>
         </div>
       </div>
