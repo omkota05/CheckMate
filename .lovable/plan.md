@@ -1,46 +1,59 @@
 
 
-# Fix Total Display — Use Backend Total Directly
+# Integrate POST /heal for Low-Confidence Items
 
-## Problem
-Two issues causing the wrong total:
-
-1. **ReceiptHealer.tsx (line 201)** recalculates total as `sum(item prices) + tax + tip` instead of using the backend-provided `currentReceipt.total`. If Gemini missed items or parsed prices slightly off, this recalculated total won't match the real receipt.
-
-2. **Settlement.tsx** uses `currentReceipt.total` correctly for Grand Total, but computes `taxTipMultiplier = total / subtotal` — if items are missing, the multiplier gets inflated, skewing per-person splits.
+## Summary
+After scanning a receipt, automatically call `POST /heal` for every item where `needs_healing` is true. Update each item's display with the returned `verified_name`, marking it as verified.
 
 ## Changes
 
-### 1. ReceiptHealer.tsx — Use `currentReceipt.total` directly
+### 1. `src/lib/api.ts` — Add `healItemAPI` function
 
-**Line 199-203**: Replace the recalculated total with the backend value:
-
-```tsx
-// Before (recalculates)
-${(currentReceipt.items.reduce((s, i) => s + i.price, 0) + currentReceipt.tax + currentReceipt.tip).toFixed(2)}
-
-// After (uses backend total)
-${currentReceipt.total.toFixed(2)}
+```ts
+export async function healItemAPI(item_name: string, restaurant_name: string): Promise<string> {
+  const res = await fetch(`${FASTAPI_BASE_URL}/heal`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+    },
+    body: JSON.stringify({ item_name, restaurant_name }),
+  });
+  if (!res.ok) throw new Error(`Heal error: ${res.status}`);
+  const data = await res.json();
+  return data.verified_name;
+}
 ```
 
-Also show the item subtotal separately so the user can see if items are missing:
+### 2. `src/lib/store.ts` — Call `/heal` after scan completes
 
-```tsx
-<div className="flex justify-between text-sm">
-  <span className="text-muted-foreground">Subtotal ({currentReceipt.items.length} items)</span>
-  <span className="text-foreground font-semibold">
-    ${currentReceipt.items.reduce((s, i) => s + i.price, 0).toFixed(2)}
-  </span>
-</div>
+In the `scanReceipt` action, after setting the receipt and logging items, loop through items with `status === 'low_confidence'` and call `healItemAPI` for each. On success, update that item's `healed_name`, `confidence_score`, and `status` to `'verified'`. Log each healing step to the agent feed.
+
+```ts
+// After setting receipt and logging items:
+const itemsToHeal = receipt.items.filter(i => i.status === 'low_confidence');
+for (const item of itemsToHeal) {
+  addAgentMessage({ message: `Healing: "${item.original_ocr_name}"...`, type: 'searching' });
+  try {
+    const verifiedName = await healItemAPI(item.original_ocr_name, receipt.restaurant_name);
+    addAgentMessage({ message: `Healed: ${item.original_ocr_name} → ${verifiedName}`, type: 'healed' });
+    // Update item in store
+    set(state => ({
+      currentReceipt: state.currentReceipt ? {
+        ...state.currentReceipt,
+        items: state.currentReceipt.items.map(i =>
+          i.id === item.id ? { ...i, healed_name: verifiedName, confidence_score: 0.98, status: 'verified' } : i
+        ),
+      } : null,
+    }));
+  } catch {
+    addAgentMessage({ message: `Could not heal "${item.original_ocr_name}"`, type: 'idle' });
+  }
+}
 ```
 
-### 2. Settlement.tsx — Keep using `currentReceipt.total` (already correct)
+After all healing is done, update receipt status to `'healed'` and log "All items verified."
 
-No changes needed here — it already uses `currentReceipt.total` for Grand Total display.
-
-## Technical Details
-
-- The backend's Gemini prompt asks for the total from the receipt image, so `data.total` should match the printed receipt total ($133.32)
-- If Gemini misses items, the item subtotal will be less than expected, but the displayed total will still be correct since it comes from the backend
-- The `taxTipMultiplier` in Settlement will auto-adjust proportionally, which is the correct behavior for splitting
+### 3. No UI changes needed
+`ReceiptHealer.tsx` already displays `healed_name` when present and shows the "Agent Verified" badge for `status === 'verified'` items — the healing results will appear automatically.
 
