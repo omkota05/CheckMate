@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { CheckCircle2, AlertTriangle, Users, User, ChevronDown } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
-import { mockFriends } from '@/lib/mockData';
+
+// TODO [BACKEND]: Item assignments could be sent to FastAPI POST /split endpoint
+// Expected payload: { receipt_id: string, assignments: { item_id: string, assigned_to: string[] }[] }
 
 export function ReceiptHealer() {
-  const { currentReceipt, assignItem, setActiveTab } = useAppStore();
+  const { currentReceipt, assignItem, setActiveTab, friends, updateTaxTip } = useAppStore();
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   if (!currentReceipt) {
@@ -15,6 +17,25 @@ export function ReceiptHealer() {
         </div>
         <p className="text-sm font-semibold text-foreground">No Receipt Loaded</p>
         <p className="mt-1 text-xs text-muted-foreground">Scan a receipt from the Command Center</p>
+      </div>
+    );
+  }
+
+  // Prompt user to set up group if no friends added
+  if (friends.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-in-up">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
+          <Users className="h-7 w-7 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-semibold text-foreground">No Group Set Up</p>
+        <p className="mt-1 text-xs text-muted-foreground">Add people to split with first</p>
+        <button
+          onClick={() => setActiveTab('group')}
+          className="mt-4 rounded-lg bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-card transition-all active:scale-95"
+        >
+          Set Up Group
+        </button>
       </div>
     );
   }
@@ -61,7 +82,6 @@ export function ReceiptHealer() {
                 onClick={() => setExpandedItem(isExpanded ? null : item.id)}
                 className="flex w-full items-center gap-3 p-3.5 text-left"
               >
-                {/* Status indicator */}
                 <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
                   isVerified ? 'bg-success/10' : isLow ? 'bg-warning/10' : 'bg-secondary'
                 }`}>
@@ -116,15 +136,15 @@ export function ReceiptHealer() {
                         assignItem(item.id, next);
                       }}
                     />
-                    {/* All */}
+                    {/* Split All */}
                     <AssignButton
                       label="Split All"
                       icon={<Users className="h-3 w-3" />}
                       active={item.assigned_to.includes('all')}
                       onClick={() => assignItem(item.id, ['all'])}
                     />
-                    {/* Friends */}
-                    {mockFriends.map((f) => (
+                    {/* Dynamic friends from store */}
+                    {friends.map((f) => (
                       <AssignButton
                         key={f.id}
                         label={f.name.split(' ')[0]}
@@ -145,20 +165,46 @@ export function ReceiptHealer() {
         })}
       </div>
 
-      {/* Tax & Tip */}
+      {/* Tax & Tip — TODO [BACKEND]: Tax/tip autofilled from FastAPI /ocr, editable for user corrections */}
       <div className="rounded-lg border border-border bg-card p-4 shadow-card">
-        <div className="flex justify-between text-sm">
+        <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Tax</span>
-          <span className="font-semibold text-foreground">${currentReceipt.tax.toFixed(2)}</span>
+          <div className="flex items-center gap-0.5">
+            <span className="text-foreground font-semibold">$</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={currentReceipt.tax}
+              onChange={(e) => updateTaxTip(parseFloat(e.target.value) || 0, currentReceipt.tip)}
+              className="w-20 rounded-md border border-border bg-secondary px-2 py-1 text-right text-sm font-semibold text-foreground outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+        </div>
+        <div className="mt-1 flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Tip</span>
+          <div className="flex items-center gap-0.5">
+            <span className="text-foreground font-semibold">$</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={currentReceipt.tip}
+              onChange={(e) => updateTaxTip(currentReceipt.tax, parseFloat(e.target.value) || 0)}
+              className="w-20 rounded-md border border-border bg-secondary px-2 py-1 text-right text-sm font-semibold text-foreground outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
         </div>
         <div className="mt-1 flex justify-between text-sm">
-          <span className="text-muted-foreground">Tip</span>
-          <span className="font-semibold text-foreground">${currentReceipt.tip.toFixed(2)}</span>
+          <span className="text-muted-foreground">Subtotal ({currentReceipt.items.length} items)</span>
+          <span className="text-foreground font-semibold">
+            ${currentReceipt.items.reduce((s, i) => s + i.price, 0).toFixed(2)}
+          </span>
         </div>
         <div className="mt-2 flex justify-between border-t border-border pt-2 text-sm">
           <span className="font-bold text-foreground">Total</span>
           <span className="font-bold text-foreground">
-            ${(currentReceipt.items.reduce((s, i) => s + i.price, 0) + currentReceipt.tax + currentReceipt.tip).toFixed(2)}
+            ${currentReceipt.total.toFixed(2)}
           </span>
         </div>
       </div>

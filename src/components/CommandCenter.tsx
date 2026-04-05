@@ -5,19 +5,20 @@ import { recentSplits } from '@/lib/mockData';
 import { useRef } from 'react';
 
 export function CommandCenter() {
-  const { startHealingSimulation, setActiveTab } = useAppStore();
+  const { startHealingSimulation, setActiveTab, setUploadedImage, scanReceipt } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleScan = () => {
-    // Trigger file input (camera on mobile)
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = () => {
-    // Simulate receipt processing
-    startHealingSimulation();
-    // After a short delay, navigate to receipt view
-    setTimeout(() => setActiveTab('receipt'), 800);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadedImage(file);
+      // Send to FastAPI backend; falls back to demo if backend is unavailable
+      scanReceipt(file);
+    }
   };
 
   return (
@@ -85,8 +86,11 @@ export function CommandCenter() {
       {/* Demo trigger */}
       <button
         onClick={() => {
+          // TODO [BACKEND]: Replace simulation with actual FastAPI calls:
+          // 1. POST /ocr with demo image → parsed items
+          // 2. POST /heal with parsed items → healed items
           startHealingSimulation();
-          setTimeout(() => setActiveTab('receipt'), 800);
+          setTimeout(() => setActiveTab('group'), 800);
         }}
         className="w-full rounded-lg border border-dashed border-accent/40 bg-accent/5 py-3 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
       >

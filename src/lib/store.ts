@@ -1,15 +1,30 @@
 import { create } from 'zustand';
-import { Receipt, AgentMessage, mockReceipt, healingMap } from './mockData';
+import { Receipt, AgentMessage, Friend, mockReceipt, healingMap } from './mockData';
+import { scanReceiptAPI, healItemAPI } from './api';
 
 interface AppState {
   currentReceipt: Receipt | null;
   agentMessages: AgentMessage[];
-  activeTab: 'home' | 'receipt' | 'settle';
-  setActiveTab: (tab: 'home' | 'receipt' | 'settle') => void;
+  activeTab: 'home' | 'group' | 'receipt' | 'settle';
+  friends: Friend[];
+  // TODO [BACKEND]: Add uploadedImage: File | null for sending to FastAPI POST /ocr
+  uploadedImage: File | null;
+
+  setActiveTab: (tab: 'home' | 'group' | 'receipt' | 'settle') => void;
   setCurrentReceipt: (receipt: Receipt | null) => void;
   addAgentMessage: (msg: Omit<AgentMessage, 'id' | 'timestamp'>) => void;
   startHealingSimulation: () => void;
   assignItem: (itemId: string, assignees: string[]) => void;
+  // TODO [BACKEND]: Tax/tip may come from FastAPI /ocr response, user can override here
+  updateTaxTip: (tax: number, tip: number) => void;
+  scanReceipt: (file: File) => Promise<void>;
+
+  // Friends management
+  // TODO [BACKEND]: Pass friends list to FastAPI POST /split endpoint payload
+  addFriend: (name: string, venmo_username: string) => void;
+  removeFriend: (id: string) => void;
+  clearFriends: () => void;
+  setUploadedImage: (file: File | null) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -23,10 +38,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
   ],
   activeTab: 'home',
+  friends: [],
+  uploadedImage: null,
 
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   setCurrentReceipt: (receipt) => set({ currentReceipt: receipt }),
+
+  setUploadedImage: (file) => set({ uploadedImage: file }),
 
   addAgentMessage: (msg) =>
     set((state) => ({
@@ -35,6 +54,27 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...state.agentMessages,
       ],
     })),
+
+  // TODO [BACKEND]: Replace with POST /friends or include in /split payload
+  addFriend: (name, venmo_username) =>
+    set((state) => ({
+      friends: [
+        ...state.friends,
+        {
+          id: crypto.randomUUID(),
+          name,
+          venmo_username,
+          profile_pic_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4`,
+        },
+      ],
+    })),
+
+  removeFriend: (id) =>
+    set((state) => ({
+      friends: state.friends.filter((f) => f.id !== id),
+    })),
+
+  clearFriends: () => set({ friends: [] }),
 
   assignItem: (itemId, assignees) =>
     set((state) => {
@@ -49,7 +89,75 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
     }),
 
+  updateTaxTip: (tax, tip) =>
+    set((state) => {
+      if (!state.currentReceipt) return state;
+      return {
+        currentReceipt: { ...state.currentReceipt, tax, tip, total: state.currentReceipt.baseTotal + tip },
+      };
+    }),
+
+  scanReceipt: async (file) => {
+    const { addAgentMessage, startHealingSimulation, setActiveTab } = get();
+    addAgentMessage({ message: 'Scanning receipt with AI...', type: 'processing' });
+
+    try {
+      const receipt = await scanReceiptAPI(file);
+      set({ currentReceipt: receipt });
+      addAgentMessage({
+        message: `Parsed ${receipt.items.length} items from "${receipt.restaurant_name}"`,
+        type: 'healed',
+      });
+      receipt.items.forEach((item) => {
+        addAgentMessage({
+          message: `${item.original_ocr_name} — $${item.price.toFixed(2)} (confidence: ${item.confidence_score.toFixed(2)})${item.status === 'low_confidence' ? ' ⚠️ needs healing' : ' ✓'}`,
+          type: item.status === 'low_confidence' ? 'searching' : 'healed',
+        });
+      });
+      // Heal low-confidence items
+      const itemsToHeal = receipt.items.filter(i => i.status === 'low_confidence');
+      for (const item of itemsToHeal) {
+        addAgentMessage({ message: `Healing: "${item.original_ocr_name}"...`, type: 'searching' });
+        try {
+          const verifiedName = await healItemAPI(item.original_ocr_name, receipt.restaurant_name);
+          addAgentMessage({ message: `Healed: ${item.original_ocr_name} → ${verifiedName}`, type: 'healed' });
+          set(state => ({
+            currentReceipt: state.currentReceipt ? {
+              ...state.currentReceipt,
+              items: state.currentReceipt.items.map(i =>
+                i.id === item.id ? { ...i, healed_name: verifiedName, confidence_score: 0.98, status: 'verified' as const } : i
+              ),
+            } : null,
+          }));
+        } catch {
+          addAgentMessage({ message: `Could not heal "${item.original_ocr_name}"`, type: 'idle' });
+        }
+      }
+      if (itemsToHeal.length > 0) {
+        addAgentMessage({ message: 'All items verified. Ready for assignment.', type: 'healed' });
+        set(state => ({
+          currentReceipt: state.currentReceipt ? { ...state.currentReceipt, status: 'healed' } : null,
+        }));
+      }
+      setActiveTab('group');
+    } catch (err) {
+      console.error('Backend scan failed, falling back to demo:', err);
+      addAgentMessage({
+        message: `Backend unavailable — using demo data. (${err instanceof Error ? err.message : 'Unknown error'})`,
+        type: 'idle',
+      });
+      startHealingSimulation();
+      setTimeout(() => setActiveTab('group'), 800);
+    }
+  },
+
   startHealingSimulation: () => {
+    // TODO [BACKEND]: Replace this entire simulation with:
+    // 1. POST image to FastAPI /ocr → receive parsed items
+    // 2. POST parsed items to FastAPI /heal → receive healed items
+    // Expected payload: FormData with image file
+    // Expected response: { items: ReceiptItem[], restaurant_name: string, tax: number, tip: number }
+
     const receipt = { ...mockReceipt };
     set({
       currentReceipt: receipt,
@@ -67,7 +175,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     let delay = 1500;
 
     items.forEach((item, index) => {
-      // Searching message
       setTimeout(() => {
         const { addAgentMessage } = get();
         addAgentMessage({
@@ -77,7 +184,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       }, delay);
       delay += 1800;
 
-      // Healed message
       setTimeout(() => {
         const healedName = healingMap[item.original_ocr_name] || item.original_ocr_name;
         const { addAgentMessage } = get();
@@ -105,7 +211,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       delay += 1200;
     });
 
-    // Final message
     setTimeout(() => {
       const { addAgentMessage } = get();
       addAgentMessage({
