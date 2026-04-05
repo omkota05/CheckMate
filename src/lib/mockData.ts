@@ -28,6 +28,7 @@ export interface Receipt {
   tax: number;
   tip: number;
   total: number;
+  baseTotal: number;
 }
 
 export interface AgentMessage {
@@ -51,6 +52,7 @@ export const mockReceipt: Receipt = {
   tax: 5.82,
   tip: 13.90,
   total: 89.22,
+  baseTotal: 89.22,
   items: [
     {
       id: 'i1',

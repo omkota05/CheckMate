@@ -75,5 +75,6 @@ export async function scanReceiptAPI(file: File): Promise<Receipt> {
     tax: data.tax,
     tip: 0,
     total: data.total,
+    baseTotal: data.total,
   };
 }
