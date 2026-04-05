@@ -18,6 +18,20 @@ interface BackendResponse {
   total: number;
 }
 
+export async function healItemAPI(item_name: string, restaurant_name: string): Promise<string> {
+  const res = await fetch(`${FASTAPI_BASE_URL}/heal`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+    },
+    body: JSON.stringify({ item_name, restaurant_name }),
+  });
+  if (!res.ok) throw new Error(`Heal error: ${res.status}`);
+  const data = await res.json();
+  return data.verified_name;
+}
+
 export async function scanReceiptAPI(file: File): Promise<Receipt> {
   const formData = new FormData();
   formData.append('file', file);

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Receipt, AgentMessage, Friend, mockReceipt, healingMap } from './mockData';
-import { scanReceiptAPI } from './api';
+import { scanReceiptAPI, healItemAPI } from './api';
 
 interface AppState {
   currentReceipt: Receipt | null;
