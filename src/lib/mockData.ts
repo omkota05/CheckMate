@@ -28,6 +28,7 @@ export interface Receipt {
   tax: number;
   tip: number;
   total: number;
+  baseTotal: number;
 }
 
 export interface AgentMessage {
