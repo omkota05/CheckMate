@@ -7,6 +7,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.requests import Request
 from scanner import scan_receipt
 from healer import heal_item, gather_candidates_with_browser_use_async, UncertainItem
 from pydantic import BaseModel
@@ -24,6 +25,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_private_network_cors_header(request: Request, call_next):
+    """Helps some browsers allow cross-origin fetches to a private LAN IP (port 8080 → 8000)."""
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Private-Network"] = "true"
+    return response
+
 
 @app.post("/scan")
 async def scan(file: UploadFile = File(...)):

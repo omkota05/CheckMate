@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Receipt, AgentMessage, Friend, mockReceipt, healingMap } from './mockData';
 import { scanReceiptAPI, healItemAPI } from './api';
+import { createId } from './id';
 
 interface AppState {
   currentReceipt: Receipt | null;
@@ -50,7 +51,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   addAgentMessage: (msg) =>
     set((state) => ({
       agentMessages: [
-        { ...msg, id: crypto.randomUUID(), timestamp: new Date() },
+        { ...msg, id: createId(), timestamp: new Date() },
         ...state.agentMessages,
       ],
     })),
@@ -61,7 +62,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       friends: [
         ...state.friends,
         {
-          id: crypto.randomUUID(),
+          id: createId(),
           name,
           venmo_username,
           profile_pic_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4`,
@@ -100,7 +101,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   scanReceipt: async (file) => {
     const { addAgentMessage, startHealingSimulation, setActiveTab } = get();
-    addAgentMessage({ message: 'Scanning receipt with AI...', type: 'processing' });
+    // Static copy first — must not throw; iOS Safari needs this update to paint before await.
+    addAgentMessage({
+      message: 'Scanning receipt with AI…',
+      type: 'processing',
+    });
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
 
     try {
       const receipt = await scanReceiptAPI(file);
@@ -168,7 +176,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch (err) {
       console.error('Backend scan failed, falling back to demo:', err);
       addAgentMessage({
-        message: `Backend unavailable — using demo data. (${err instanceof Error ? err.message : 'Unknown error'})`,
+        message: `Scan failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        type: 'error',
+      });
+      addAgentMessage({
+        message:
+          'Using demo data below. Fix: run backend on port 8000, npm run dev on 8080, open the same LAN URL as Vite shows (phone only uses :8080; /api is proxied).',
         type: 'idle',
       });
       startHealingSimulation();
@@ -191,7 +204,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       currentReceipt: receipt,
       agentMessages: [
         {
-          id: crypto.randomUUID(),
+          id: createId(),
           timestamp: new Date(),
           message: 'Agent Parsing Image...',
           type: 'processing',
