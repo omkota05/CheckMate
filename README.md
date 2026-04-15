@@ -1,4 +1,4 @@
-# Sentinel Split
+# CheckMate
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-backend-blue) ![React](https://img.shields.io/badge/React-TypeScript-green) ![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-orange)
 
